@@ -1,5 +1,4 @@
 const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
-const PADDING = 20;
 
 document.getElementById('weather-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -16,7 +15,7 @@ document.getElementById('weather-form').addEventListener('submit', async (ev) =>
   const url = buildWeatherQuery(city, apiKey, fahrenheit);
   try {
     const data = await getWeatherData(url);
-    display(data, !fahrenheit); // metric if not fahrenheit
+    displayCard(data, !fahrenheit); // metric if not fahrenheit
   } catch (err) {
     showError(err.message || String(err));
   }
@@ -42,62 +41,52 @@ async function getWeatherData(url) {
   return json;
 }
 
-function display(weatherData, metric = true) {
-  const out = [];
-
-  const city = `${weatherData.name}, ${weatherData.sys.country}`;
-  const weatherDescription = weatherData.weather[0].description;
-
-  const temp_current = weatherData.main.temp;
-  const temp_min = weatherData.main.temp_min;
-  const temp_max = weatherData.main.temp_max;
-  const feels_like = weatherData.main.feels_like;
+function displayCard(weatherData, metric = true) {
   const deg = metric ? '°C' : '°F';
-
-  const raw_latitude = weatherData.coord.lat;
-  const raw_longitude = weatherData.coord.lon;
-  const longitude = longStr(raw_longitude);
-  const latitude = latStr(raw_latitude);
-
-  const raw_wind_speed = weatherData.wind && weatherData.wind.speed;
-  const wind_degrees = weatherData.wind && weatherData.wind.deg;
-  const raw_wind_gust = weatherData.wind && weatherData.wind.gust;
-  const wind_speed = speedStr(raw_wind_speed, metric);
-  const direction = typeof wind_degrees === 'number' ? directionStr(wind_degrees) : '';
-  const gust_speed = raw_wind_gust ? speedStr(raw_wind_gust, metric) : null;
-
+  const city = `${weatherData.name}, ${weatherData.sys.country}`;
+  const desc = weatherData.weather[0].description;
+  const temp_current = Math.round(weatherData.main.temp);
+  const feels_like = Math.round(weatherData.main.feels_like);
+  const temp_min = Math.round(weatherData.main.temp_min);
+  const temp_max = Math.round(weatherData.main.temp_max);
   const humidity = weatherData.main.humidity;
   const clouds = weatherData.clouds.all;
   const pressure = weatherData.main.pressure;
-  const visibility = weatherData.visibility; // meters
+  const visibilityKm = Math.round(weatherData.visibility / 1000);
+  const windSpeedLabel = speedStr(weatherData.wind?.speed, metric);
+  const windDir = (weatherData.wind && typeof weatherData.wind.deg === 'number') ? directionStr(weatherData.wind.deg) : '';
+  const gust = weatherData.wind?.gust ? speedStr(weatherData.wind.gust, metric) : null;
+  const coords = `${latStr(weatherData.coord.lat)} ${longStr(weatherData.coord.lon)}`;
 
-  const sunrise_utc = weatherData.sys.sunrise;
-  const sunset_utc = weatherData.sys.sunset;
-  const timezone = weatherData.timezone; // seconds shift from UTC for location
-  const sunrise = localTime(sunrise_utc, timezone);
-  const sunset = localTime(sunset_utc, timezone);
+  // sunrise/sunset - convert using timezone shift (api timezone is seconds)
+  const timezone = weatherData.timezone;
+  const sunriseDate = localTime(weatherData.sys.sunrise, timezone); // returns JS Date in example earlier
+  const sunsetDate = localTime(weatherData.sys.sunset, timezone);
 
-  // build textual output similar to python print layout
-  out.push(centerText(`${city} ${Math.round(temp_current)}${deg}`, PADDING) + ' ' + capitalize(weatherDescription));
-  out.push(centerText(`${latitude} ${longitude}`, PADDING) + ` ${humidity}% humidity`);
-  out.push(' '.repeat(PADDING) + `Feels like: ${Math.round(feels_like)}${deg}`);
-  out.push(' '.repeat(PADDING) + `${clouds}% cloud cover`);
-  out.push(`Wind: ${wind_speed} ${direction}` + (gust_speed ? `    Gusts: ${gust_speed}` : ''));
-  out.push(`Temperature range: ${Math.round(temp_min)}-${Math.round(temp_max)}${deg}    Pressure: ${pressure} mb`);
-  out.push(`Sunrise: ${time12hr(sunrise)}    Sunset: ${time12hr(sunset)}    Visibility: ${Math.round(visibility/1000)}km`);
+  // icon
+  const iconCode = weatherData.weather[0].icon;
+  const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
 
   document.getElementById('results').hidden = false;
-  document.getElementById('output').textContent = out.join('\n');
+  document.getElementById('card-city').textContent = city;
+  document.getElementById('card-temp').textContent = `${temp_current}${deg}`;
+  document.getElementById('card-desc').textContent = capitalize(desc);
+  document.getElementById('card-feels').textContent = `${feels_like}${deg}`;
+  document.getElementById('card-minmax').textContent = `${temp_min}${deg} / ${temp_max}${deg}`;
+  document.getElementById('card-humidity').textContent = `${humidity}%`;
+  document.getElementById('card-clouds').textContent = `${clouds}%`;
+  document.getElementById('card-pressure').textContent = `${pressure} mb`;
+  document.getElementById('card-visibility').textContent = `${visibilityKm} km`;
+  document.getElementById('card-wind').textContent = `${windSpeedLabel} ${windDir}${gust ? ' • Gusts: ' + gust : ''}`;
+  document.getElementById('card-sun').textContent = `${time12hr(sunriseDate)} / ${time12hr(sunsetDate)}`;
+  document.getElementById('card-coords').textContent = coords;
+
+  const img = document.getElementById('card-icon');
+  img.src = iconUrl;
+  img.alt = desc;
 }
 
 /* Utilities */
-
-function centerText(s, width) {
-  // approximate centering in monospace layout
-  if (s.length >= width) return s;
-  const pad = Math.max(0, Math.floor((width - s.length) / 2));
-  return ' '.repeat(pad) + s;
-}
 
 function capitalize(s) {
   if (!s) return s;
