@@ -1,0 +1,66 @@
+:root{
+  --max-width: 900px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+}
+
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+  background: #f6f8fa;
+  color: #111827;
+}
+
+main{
+  width: min(92vw, var(--max-width));
+  background: white;
+  padding: 1.25rem;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+form{
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+form label{
+  display: block;
+  font-size: 0.9rem;
+}
+
+input[type="text"], input[type="password"]{
+  width: 100%;
+  padding: 0.45rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+button{
+  padding: 0.5rem 0.8rem;
+  border: none;
+  background: #2563eb;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.output{
+  background: #0b1220;
+  color: #dbeafe;
+  padding: 0.8rem;
+  border-radius: 6px;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+#error{
+  margin-top: 0.6rem;
+  color: #b91c1c;
+}

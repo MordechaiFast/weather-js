@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weather (OpenWeather) — JS</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>Weather</h1>
+
+    <form id="weather-form">
+      <label>
+        OpenWeather API Key
+        <input id="api-key" type="password" placeholder="Enter API key" required />
+      </label>
+
+      <label>
+        City
+        <input id="city" type="text" placeholder="e.g. Tel Aviv" required />
+      </label>
+
+      <label>
+        <input id="fahrenheit" type="checkbox" />
+        Show Fahrenheit (°F)
+      </label>
+
+      <button type="submit">Get Weather</button>
+    </form>
+
+    <div id="error" role="alert" aria-live="polite"></div>
+
+    <section id="results" hidden>
+      <pre id="output" class="output"></pre>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
