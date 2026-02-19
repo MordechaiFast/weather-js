@@ -3,6 +3,18 @@ const STORAGE_KEY = 'openweather_api_key';
 
 document.addEventListener('DOMContentLoaded', () => {
   loadApiKey();
+
+  document.getElementById('settings-form').addEventListener('submit', (ev) => {
+    ev.preventDefault(); // important to prevent form navigation
+    const key = document.getElementById('api-key').value.trim();
+    if (key) {
+      saveApiKey(key);
+      showMessage('API key saved.');
+    } else {
+      showError('Enter an API key to save.');
+    }
+  });
+
   document.getElementById('clear-key').addEventListener('click', () => {
     clearApiKey();
     showMessage('Saved API key cleared.');
@@ -14,16 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiKey = document.getElementById('api-key').value.trim();
     const city = document.getElementById('city').value.trim();
     const fahrenheit = document.getElementById('fahrenheit').checked;
-    const remember = document.getElementById('remember-key').checked;
 
     if (!apiKey || !city) {
       showError('API key and city are required.');
       return;
     }
-
-    // Save or remove API key according to the checkbox
-    if (remember) saveApiKey(apiKey);
-    else removeApiKey();
 
     const url = buildWeatherQuery(city, apiKey, fahrenheit);
     try {
@@ -35,6 +42,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function loadApiKey() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      document.getElementById('api-key').value = stored;
+    }
+  } catch (err) {
+    // ignore; localStorage unavailable
+  }
+}
+
 function saveApiKey(key) {
   try {
     localStorage.setItem(STORAGE_KEY, key);
@@ -45,22 +63,9 @@ function saveApiKey(key) {
   }
 }
 
-function loadApiKey() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      document.getElementById('api-key').value = stored;
-      document.getElementById('remember-key').checked = true;
-    }
-  } catch (err) {
-    // ignore; localStorage unavailable
-  }
-}
-
 function removeApiKey() {
   try {
     localStorage.removeItem(STORAGE_KEY);
-    document.getElementById('remember-key').checked = false;
   } catch (err) {
     // ignore
   }
@@ -80,6 +85,15 @@ function showMessage(msg) {
     el.textContent = '';
     el.style.color = '';
   }, 3000);
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+}
+
+function clearError() {
+  document.getElementById('error').textContent = '';
 }
 
 function buildWeatherQuery(city, apiKey, fahrenheit=false) {
@@ -198,13 +212,4 @@ function time12hr(dateObj) {
   if (hour > 12) hour -= 12;
   if (hour === 0) hour = 12;
   return `${hour}:${String(minute).padStart(2,'0')}`;
-}
-
-function showError(msg) {
-  const el = document.getElementById('error');
-  el.textContent = msg;
-}
-
-function clearError() {
-  document.getElementById('error').textContent = '';
 }
