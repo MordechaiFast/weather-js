@@ -14,7 +14,14 @@
     <form id="weather-form">
       <label>
         OpenWeather API Key
-        <input id="api-key" type="password" placeholder="Enter API key" required />
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input id="api-key" type="password" placeholder="Enter API key" />
+          <label style="font-weight:500; font-size:0.9rem;">
+            <input id="remember-key" type="checkbox" />
+            Remember
+          </label>
+          <button id="clear-key" type="button" title="Clear saved API key">Clear saved key</button>
+        </div>
       </label>
 
       <label>

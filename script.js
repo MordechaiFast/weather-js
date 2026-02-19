@@ -1,25 +1,86 @@
 const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+const STORAGE_KEY = 'openweather_api_key';
 
-document.getElementById('weather-form').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  clearError();
-  const apiKey = document.getElementById('api-key').value.trim();
-  const city = document.getElementById('city').value.trim();
-  const fahrenheit = document.getElementById('fahrenheit').checked;
+document.addEventListener('DOMContentLoaded', () => {
+  loadApiKey();
+  document.getElementById('clear-key').addEventListener('click', () => {
+    clearApiKey();
+    showMessage('Saved API key cleared.');
+  });
 
-  if (!apiKey || !city) {
-    showError('API key and city are required.');
-    return;
-  }
+  document.getElementById('weather-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    clearError();
+    const apiKey = document.getElementById('api-key').value.trim();
+    const city = document.getElementById('city').value.trim();
+    const fahrenheit = document.getElementById('fahrenheit').checked;
+    const remember = document.getElementById('remember-key').checked;
 
-  const url = buildWeatherQuery(city, apiKey, fahrenheit);
-  try {
-    const data = await getWeatherData(url);
-    displayCard(data, !fahrenheit); // metric if not fahrenheit
-  } catch (err) {
-    showError(err.message || String(err));
-  }
+    if (!apiKey || !city) {
+      showError('API key and city are required.');
+      return;
+    }
+
+    // Save or remove API key according to the checkbox
+    if (remember) saveApiKey(apiKey);
+    else removeApiKey();
+
+    const url = buildWeatherQuery(city, apiKey, fahrenheit);
+    try {
+      const data = await getWeatherData(url);
+      displayCard(data, !fahrenheit); // metric if not fahrenheit
+    } catch (err) {
+      showError(err.message || String(err));
+    }
+  });
 });
+
+function saveApiKey(key) {
+  try {
+    localStorage.setItem(STORAGE_KEY, key);
+    // no console.log of the key
+  } catch (err) {
+    // localStorage may be unavailable (eg. blocked)
+    showError('Could not save API key to localStorage.');
+  }
+}
+
+function loadApiKey() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      document.getElementById('api-key').value = stored;
+      document.getElementById('remember-key').checked = true;
+    }
+  } catch (err) {
+    // ignore; localStorage unavailable
+  }
+}
+
+function removeApiKey() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    document.getElementById('remember-key').checked = false;
+  } catch (err) {
+    // ignore
+  }
+}
+
+function clearApiKey() {
+  removeApiKey();
+  document.getElementById('api-key').value = '';
+}
+
+function showMessage(msg) {
+  const el = document.getElementById('error');
+  el.style.color = '#064e3b'; // green-ish for success messages
+  el.textContent = msg;
+  setTimeout(() => {
+    // restore to default error color after 3s
+    el.textContent = '';
+    el.style.color = '';
+  }, 3000);
+}
 
 function buildWeatherQuery(city, apiKey, fahrenheit=false) {
   const encoded = encodeURIComponent(city);
