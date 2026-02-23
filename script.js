@@ -109,7 +109,7 @@ async function getWeatherData(url) {
 function displayCard(city, data, metric = true) {
   const deg = metric ? '°C' : '°F';
   const weatherData = data.current;
-  const desc = weatherData.weather.description;
+  const desc = weatherData.weather[0].description;
   const temp_current = Math.round(weatherData.temp);
   const feels_like = Math.round(weatherData.feels_like);
   const humidity = weatherData.humidity;
@@ -156,16 +156,20 @@ function capitalize(s) {
 
 function longStr(longitude) {
   const degrees = Math.trunc(longitude);
-  const minutes = Math.round(Math.abs((longitude - degrees) * 60));
+  const decimalDegrees = Math.abs(longitude - degrees);
+  const minutes = Math.trunc(decimalDegrees * 60);
+  const seconds = Math.round((decimalDegrees * 60 - minutes) * 60);
   const dir = degrees > 0 ? 'E' : 'W';
-  return `${Math.abs(degrees)}°${String(minutes).padStart(2,'0')}'${dir}`;
+  return `${Math.abs(degrees)}°${String(minutes).padStart(2,'0')}'${String(seconds).padStart(2,'0')}"${dir}`;
 }
 
 function latStr(latitude) {
   const degrees = Math.trunc(latitude);
-  const minutes = Math.round(Math.abs((latitude - degrees) * 60));
+  const decimalDegrees = Math.abs(latitude - degrees);
+  const minutes = Math.trunc(decimalDegrees * 60);
+  const seconds = Math.round((decimalDegrees * 60 - minutes) * 60);
   const dir = degrees > 0 ? 'N' : 'S';
-  return `${Math.abs(degrees)}°${String(minutes).padStart(2,'0')}'${dir}`;
+  return `${Math.abs(degrees)}°${String(minutes).padStart(2,'0')}'${String(seconds).padStart(2,'0')}"${dir}`;
 }
 
 function speedStr(speed, metric=true) {
