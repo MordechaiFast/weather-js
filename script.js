@@ -1,91 +1,37 @@
-const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
-const STORAGE_KEY = 'openweather_api_key';
+const GEO_URL = "https://api.openweathermap.org/geo/1.0/direct";
+const ONECALL_URL = "https://api.openweathermap.org/data/3.0/onecall";
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadApiKey();
-
-  document.getElementById('settings-form').addEventListener('submit', (ev) => {
-    ev.preventDefault(); // important to prevent form navigation
-    const key = document.getElementById('api-key').value.trim();
-    if (key) {
-      saveApiKey(key);
-      showMessage('API key saved.');
-    } else {
-      showError('Enter an API key to save.');
-    }
-  });
-
-  document.getElementById('clear-key').addEventListener('click', () => {
-    clearApiKey();
-    showMessage('Saved API key cleared.');
-  });
-
   document.getElementById('weather-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     clearError();
-    const apiKey = document.getElementById('api-key').value.trim();
+    const apiKey = api_key_3; // using the imported key from keys.js
     const city = document.getElementById('city').value.trim();
     const fahrenheit = document.getElementById('fahrenheit').checked;
 
-    if (!apiKey || !city) {
-      showError('API key and city are required.');
+    if (!city) {
+      showError('City is required.');
       return;
     }
 
-    const url = buildWeatherQuery(city, apiKey, fahrenheit);
     try {
-      const data = await getWeatherData(url);
-      displayCard(data, !fahrenheit); // metric if not fahrenheit
+      const geoData = await getGeoDataCached(city, apiKey);
+      if (!geoData || geoData.length === 0) {
+        throw new Error('No weather data for this city.');
+      }
+      const { name, state, country, lat, lon } = geoData[0];
+      const fullCityName = country === 'IL'
+        ? geoData[0].local_names.he
+        : `${name}${state ? ', ' + state : ''}, ${country}`;
+
+      const weatherUrl = buildWeatherQuery(lat, lon, apiKey, fahrenheit);
+      const data = await getWeatherData(weatherUrl);
+      displayCard(fullCityName, data, !fahrenheit); // metric if not fahrenheit
     } catch (err) {
       showError(err.message || String(err));
     }
   });
 });
-
-function loadApiKey() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      document.getElementById('api-key').value = stored;
-    }
-  } catch (err) {
-    // ignore; localStorage unavailable
-  }
-}
-
-function saveApiKey(key) {
-  try {
-    localStorage.setItem(STORAGE_KEY, key);
-    // no console.log of the key
-  } catch (err) {
-    // localStorage may be unavailable (eg. blocked)
-    showError('Could not save API key to localStorage.');
-  }
-}
-
-function removeApiKey() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (err) {
-    // ignore
-  }
-}
-
-function clearApiKey() {
-  removeApiKey();
-  document.getElementById('api-key').value = '';
-}
-
-function showMessage(msg) {
-  const el = document.getElementById('error');
-  el.style.color = '#064e3b'; // green-ish for success messages
-  el.textContent = msg;
-  setTimeout(() => {
-    // restore to default error color after 3s
-    el.textContent = '';
-    el.style.color = '';
-  }, 3000);
-}
 
 function showError(msg) {
   const el = document.getElementById('error');
@@ -96,10 +42,55 @@ function clearError() {
   document.getElementById('error').textContent = '';
 }
 
-function buildWeatherQuery(city, apiKey, fahrenheit=false) {
+async function getGeoDataCached(city, apiKey) {
+  const cacheKey = `geoData_${city.toLowerCase()}`;
+  try {
+    // Check if data is already in localStorage
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      console.log('Using cached geoData for:', city);
+      return JSON.parse(cached);
+    }
+  } catch (err) {
+    // localStorage may be unavailable; continue with API call
+  }
+
+  // Query the API if not in cache
+  const geoUrl = buildGeoQuery(city, apiKey);
+  const geoData = await getGeoData(geoUrl);
+
+  // Store in localStorage for future use
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(geoData));
+  } catch (err) {
+    // localStorage may be unavailable; continue without caching
+  }
+
+  return geoData;
+}
+
+function buildGeoQuery(city, apiKey) {
   const encoded = encodeURIComponent(city);
+  return `${GEO_URL}?q=${encoded}&limit=1&appid=${apiKey}`;
+}
+
+async function getGeoData(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    if (resp.status === 401) throw new Error('Access denied. Check API key.');
+    if (resp.status === 404) throw new Error('No weather data for this city.');
+    const txt = await resp.text();
+    throw new Error(resp.statusText || txt || `HTTP ${resp.status}`);
+  }
+  const json = await resp.json();
+  console.log('Geocode response:', json);
+  if (json[0] && json[0].country === 'PS') json[0].country = 'IL';
+  return json;
+}
+
+function buildWeatherQuery(lat, lon, apiKey, fahrenheit=false) {
   const units = fahrenheit ? 'imperial' : 'metric';
-  return `${BASE_URL}?q=${encoded}&units=${units}&appid=${apiKey}`;
+  return `${ONECALL_URL}?lat=${lat}&lon=${lon}&units=${units}&appid=${apiKey}`;
 }
 
 async function getWeatherData(url) {
@@ -111,32 +102,28 @@ async function getWeatherData(url) {
     throw new Error(resp.statusText || txt || `HTTP ${resp.status}`);
   }
   const json = await resp.json();
-  // match your python script behavior
-  if (json.sys && json.sys.country === 'PS') json.sys.country = 'IL';
+  console.log('Weather response:', json);
   return json;
 }
 
-function displayCard(weatherData, metric = true) {
+function displayCard(city, data, metric = true) {
   const deg = metric ? '°C' : '°F';
-  const city = `${weatherData.name}, ${weatherData.sys.country}`;
-  const desc = weatherData.weather[0].description;
-  const temp_current = Math.round(weatherData.main.temp);
-  const feels_like = Math.round(weatherData.main.feels_like);
-  const temp_min = Math.round(weatherData.main.temp_min);
-  const temp_max = Math.round(weatherData.main.temp_max);
-  const humidity = weatherData.main.humidity;
-  const clouds = weatherData.clouds.all;
-  const pressure = weatherData.main.pressure;
+  const weatherData = data.current;
+  const desc = weatherData.weather.description;
+  const temp_current = Math.round(weatherData.temp);
+  const feels_like = Math.round(weatherData.feels_like);
+  const humidity = weatherData.humidity;
+  const clouds = weatherData.clouds;
+  const pressure = weatherData.pressure;
   const visibilityKm = Math.round(weatherData.visibility / 1000);
-  const windSpeedLabel = speedStr(weatherData.wind?.speed, metric);
-  const windDir = (weatherData.wind && typeof weatherData.wind.deg === 'number') ? directionStr(weatherData.wind.deg) : '';
-  const gust = weatherData.wind?.gust ? speedStr(weatherData.wind.gust, metric) : null;
-  const coords = `${latStr(weatherData.coord.lat)} ${longStr(weatherData.coord.lon)}`;
+  const windSpeedLabel = speedStr(weatherData.wind_speed, metric);
+  const windDir = directionStr(weatherData.wind_deg);
+  const gust = weatherData.wind_gust ? speedStr(weatherData.wind_gust, metric) : null;
+  const coords = `${latStr(data.lat)} ${longStr(data.lon)}`;
 
   // sunrise/sunset - convert using timezone shift (api timezone is seconds)
-  const timezone = weatherData.timezone;
-  const sunriseDate = localTime(weatherData.sys.sunrise, timezone); // returns JS Date in example earlier
-  const sunsetDate = localTime(weatherData.sys.sunset, timezone);
+  const sunriseDate = localTime(weatherData.sunrise, data.timezone_offset); // returns JS Date in example earlier
+  const sunsetDate = localTime(weatherData.sunset, data.timezone_offset);
 
   // icon
   const iconCode = weatherData.weather[0].icon;
@@ -147,7 +134,6 @@ function displayCard(weatherData, metric = true) {
   document.getElementById('card-temp').textContent = `${temp_current}${deg}`;
   document.getElementById('card-desc').textContent = capitalize(desc);
   document.getElementById('card-feels').textContent = `${feels_like}${deg}`;
-  document.getElementById('card-minmax').textContent = `${temp_min}${deg} / ${temp_max}${deg}`;
   document.getElementById('card-humidity').textContent = `${humidity}%`;
   document.getElementById('card-clouds').textContent = `${clouds}%`;
   document.getElementById('card-pressure').textContent = `${pressure} mb`;
