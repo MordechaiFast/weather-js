@@ -10,8 +10,6 @@
 </head>
 <body>
   <main>
-    <h1>Weather</h1>
-
     <section id="weather-section">
       <form id="weather-form">
         <label>
@@ -31,27 +29,26 @@
     <section id="results" hidden>
       <div id="weather-card" class="weather-card" aria-live="polite">
         <div class="card-left">
-        <div class="city" id="card-city"></div>
-        <div class="temp-row">
-            <img id="card-icon" alt="" class="weather-icon" />
-            <div class="temp">
-            <div id="card-temp" class="temp-value"></div>
-            <div id="card-desc" class="temp-desc"></div>
-            </div>
-        </div>
+          <div class="city" id="card-city"></div>
+          <strong>Coordinates:</strong> <span id="card-coords"></span>
+          <strong>Sunrise / Sunset:</strong> <span id="card-sun"></span>
+          <strong>Current temp:</strong> <span id="card-temp"></span>
+          <strong>Pressure:</strong> <span id="card-pressure"></span>
+          <strong>Davening Direction:</strong> <span id="card-mikdash-direction"></span>
         </div>
 
         <div class="card-right">
-        <ul class="details">
-            <li><strong>Feels like:</strong> <span id="card-feels"></span></li>
-            <li><strong>Humidity:</strong> <span id="card-humidity"></span></li>
-            <li><strong>Clouds:</strong> <span id="card-clouds"></span></li>
-            <li><strong>Pressure:</strong> <span id="card-pressure"></span></li>
-            <li><strong>Visibility:</strong> <span id="card-visibility"></span></li>
-            <li><strong>Wind:</strong> <span id="card-wind"></span></li>
-            <li><strong>Sunrise / Sunset:</strong> <span id="card-sun"></span></li>
-            <li><strong>Coordinates:</strong> <span id="card-coords"></span></li>
-        </ul>
+          <table class="hourly-data">
+            <thead>
+            <tr>
+                <th>Time</th>
+                <th>Temperature</th>
+                <th>Pressure</th>
+            </tr>
+            </thead>
+            <tbody id="hourly-body">
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

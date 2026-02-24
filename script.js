@@ -1,6 +1,9 @@
 const GEO_URL = "https://api.openweathermap.org/geo/1.0/direct";
 const ONECALL_URL = "https://api.openweathermap.org/data/3.0/onecall";
 
+const MIKDASH_LAT = 31.7780;
+const MIKDASH_LON = 35.2353;
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('weather-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -78,7 +81,6 @@ async function getGeoData(url) {
   const resp = await fetch(url);
   if (!resp.ok) {
     if (resp.status === 401) throw new Error('Access denied. Check API key.');
-    if (resp.status === 404) throw new Error('No weather data for this city.');
     const txt = await resp.text();
     throw new Error(resp.statusText || txt || `HTTP ${resp.status}`);
   }
@@ -97,7 +99,6 @@ async function getWeatherData(url) {
   const resp = await fetch(url);
   if (!resp.ok) {
     if (resp.status === 401) throw new Error('Access denied. Check API key.');
-    if (resp.status === 404) throw new Error('No weather data for this city.');
     const txt = await resp.text();
     throw new Error(resp.statusText || txt || `HTTP ${resp.status}`);
   }
@@ -109,42 +110,51 @@ async function getWeatherData(url) {
 function displayCard(city, data, metric = true) {
   const deg = metric ? '°C' : '°F';
   const weatherData = data.current;
-  const desc = weatherData.weather[0].description;
-  const temp_current = Math.round(weatherData.temp);
-  const feels_like = Math.round(weatherData.feels_like);
-  const humidity = weatherData.humidity;
-  const clouds = weatherData.clouds;
-  const pressure = weatherData.pressure;
-  const visibilityKm = Math.round(weatherData.visibility / 1000);
-  const windSpeedLabel = speedStr(weatherData.wind_speed, metric);
-  const windDir = directionStr(weatherData.wind_deg);
-  const gust = weatherData.wind_gust ? speedStr(weatherData.wind_gust, metric) : null;
+  const temp_current = weatherData.temp;
+  const pressure_current = weatherData.pressure;
+  const sunriseTimestamp = weatherData.sunrise;
+  const sunsetTimestamp = weatherData.sunset;
   const coords = `${latStr(data.lat)} ${longStr(data.lon)}`;
+  const mikdashDirection = greatCircleDirection(data.lat, data.lon);
 
   // sunrise/sunset - convert using timezone shift (api timezone is seconds)
   const sunriseDate = localTime(weatherData.sunrise, data.timezone_offset); // returns JS Date in example earlier
   const sunsetDate = localTime(weatherData.sunset, data.timezone_offset);
 
-  // icon
-  const iconCode = weatherData.weather[0].icon;
-  const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-
   document.getElementById('results').hidden = false;
   document.getElementById('card-city').textContent = city;
   document.getElementById('card-temp').textContent = `${temp_current}${deg}`;
-  document.getElementById('card-desc').textContent = capitalize(desc);
-  document.getElementById('card-feels').textContent = `${feels_like}${deg}`;
-  document.getElementById('card-humidity').textContent = `${humidity}%`;
-  document.getElementById('card-clouds').textContent = `${clouds}%`;
-  document.getElementById('card-pressure').textContent = `${pressure} mb`;
-  document.getElementById('card-visibility').textContent = `${visibilityKm} km`;
-  document.getElementById('card-wind').textContent = `${windSpeedLabel} ${windDir}${gust ? ' • Gusts: ' + gust : ''}`;
+  document.getElementById('card-pressure').textContent = `${pressure_current} mb`;
   document.getElementById('card-sun').textContent = `${time12hr(sunriseDate)} / ${time12hr(sunsetDate)}`;
   document.getElementById('card-coords').textContent = coords;
+  document.getElementById('card-mikdash-direction').textContent = mikdashDirection;
 
-  const img = document.getElementById('card-icon');
-  img.src = iconUrl;
-  img.alt = desc;
+  // Populate hourly data from sunrise to sunset
+  const hourlyBody = document.getElementById('hourly-body');
+  hourlyBody.innerHTML = '';
+
+  let hourlyData = data.hourly.filter(h => h.dt >= sunriseTimestamp && h.dt <= sunsetTimestamp);
+  if (hourlyData.length === 0) {
+    // If no hourly data for the day (e.g. after sunset), show the next day's data instead
+    const nextDayStart = sunriseTimestamp + 24 * 3600;
+    const nextDayEnd = sunsetTimestamp + 24 * 3600;
+    hourlyData = data.hourly.filter(h => h.dt >= nextDayStart && h.dt < nextDayEnd);
+  }
+  
+  hourlyData.forEach(hour => {
+    const hourDate = localTime(hour.dt, data.timezone_offset);
+    const timeStr = time12hr(hourDate);
+    const temp = hour.temp;
+    const pressure = hour.pressure;
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${timeStr}</td>
+      <td>${temp}${deg}</td>
+      <td>${pressure} mb</td>
+    `;
+    hourlyBody.appendChild(row);
+  });
 }
 
 /* Utilities */
@@ -202,4 +212,25 @@ function time12hr(dateObj) {
   if (hour > 12) hour -= 12;
   if (hour === 0) hour = 12;
   return `${hour}:${String(minute).padStart(2,'0')}`;
+}
+
+function d2r(deg) {
+  return deg * Math.PI / 180;
+}
+
+function r2d(rad) {
+  return rad * 180 / Math.PI;
+}
+
+function greatCircleDirection(lat1, lon1) {
+  // Returns the compass direction from (lat1, lon1) to the mikdash location
+  const lat2 = d2r(MIKDASH_LAT);
+  const lon2 = d2r(MIKDASH_LON);
+  lat1 = d2r(lat1);
+  lon1 = d2r(lon1);
+  const dLon = lon2 - lon1;
+  const y = Math.sin(dLon);
+  const x = Math.cos(lat1)*Math.tan(lat2) - Math.sin(lat1)*Math.cos(dLon);
+  const brng = r2d(Math.atan2(y, x));
+  return `${directionStr(brng)} (${brng.toFixed(0)}°)`;
 }
