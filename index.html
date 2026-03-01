@@ -30,7 +30,7 @@
       <div id="weather-card" class="weather-card" aria-live="polite">
         <div class="card-left">
           <div class="city" id="card-city"></div>
-          <strong>Coordinates:</strong> <span id="card-coords"></span>
+          <span id="card-coords"></span>
           <strong>Sunrise / Sunset:</strong> <span id="card-sun"></span>
           <strong>Current temp:</strong> <span id="card-temp"></span>
           <strong>Pressure:</strong> <span id="card-pressure"></span>
@@ -40,15 +40,22 @@
         <div class="card-right">
           <table class="hourly-data">
             <thead>
-            <tr>
+              <tr>
                 <th>Time</th>
                 <th>Temperature</th>
                 <th>Pressure</th>
-            </tr>
+              </tr>
             </thead>
             <tbody id="hourly-body">
             </tbody>
           </table>
+        </div>
+
+        <div class="card-right">
+          <table class="daily-data">
+            <thead></thead>
+            <tbody id="zmanim-body">
+            </tbody>
         </div>
       </div>
     </section>

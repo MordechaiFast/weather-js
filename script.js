@@ -143,7 +143,7 @@ function displayCard(city, data, metric = true) {
   
   hourlyData.forEach(hour => {
     const hourDate = localTime(hour.dt, data.timezone_offset);
-    const timeStr = time12hr(hourDate);
+    const timeStr = time12hr(hourDate, false);
     const temp = hour.temp;
     const pressure = hour.pressure;
 
@@ -205,13 +205,14 @@ function localTime(utcSeconds, timezoneShiftSeconds) {
   return new Date(ts);
 }
 
-function time12hr(dateObj) {
+function time12hr(dateObj, showSeconds = true) {
   if (!(dateObj instanceof Date)) return '';
   let hour = dateObj.getUTCHours(); // using UTC hours because dateObj is already shifted
   let minute = dateObj.getUTCMinutes();
+  let second = dateObj.getUTCSeconds();
   if (hour > 12) hour -= 12;
   if (hour === 0) hour = 12;
-  return `${hour}:${String(minute).padStart(2,'0')}`;
+  return `${hour}:${String(minute).padStart(2,'0')}${showSeconds ? `:${String(second).padStart(2,'0')}` : ''}`;
 }
 
 function d2r(deg) {
