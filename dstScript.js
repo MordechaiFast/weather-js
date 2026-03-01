@@ -1,7 +1,12 @@
 const GEO_URL = "https://api.openweathermap.org/geo/1.0/direct";
 const ONECALL_URL = "https://api.openweathermap.org/data/3.0/onecall";
 
+const MIKDASH_LAT = 31.7780;
+const MIKDASH_LON = 35.2353;
+
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('date').valueAsDate = new Date(); // default to today
+
   document.getElementById('input-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     clearError();
@@ -105,21 +110,32 @@ async function getWeatherData(url) {
 }
 
 function displayCard(city, date, data) {
-    const options = {
+    const dateOptions = {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     };
-    const coords = `${latStr(data.lat)} ${longStr(data.lon)}`;
+    const timeOptions = {
+      timeZone: data.timezone,
+      timeZoneName: "long",
+      hour12: false,
+    };
+
     document.getElementById('results').hidden = false;
+    
     document.getElementById('card-city').textContent = city;
-    document.getElementById('card-date').textContent = new Date(date).toLocaleDateString(undefined, options);
-    document.getElementById('card-coords').textContent = coords;
-    const tz = data.timezone;
-    const tzOffset = getStandardOffset(tz, new Date().getFullYear());
-    const tzStr = formatOffset(tzOffset);
-    document.getElementById('card-tz').textContent = data.timezone;
+    document.getElementById('card-coords').textContent = 
+      `${latStr(data.lat)} ${longStr(data.lon)}`;
+    document.getElementById('card-direction').textContent = 
+      greatCircleDirection(data.lat, data.lon);
+
+    document.getElementById('card-date').textContent = 
+      new Date(date).toLocaleDateString(undefined, dateOptions);
+    document.getElementById('card-tz').textContent =
+      new Date(date).toLocaleTimeString(undefined, timeOptions).match(/\s+(.+)/)[1];
+    document.getElementById('card-hebrew-date').textContent = 
+      Intl.DateTimeFormat("he", {calendar: "hebrew"}).format(new Date(date));
 }
 
 /* Utilities */
@@ -159,6 +175,13 @@ function formatOffset(minutes) {  // usable as tz identifier for Intl.DateTimeFo
   return `${sign}${h}:${m}`;
 }
 
+function isDST(timeZone, date) {
+  const year = date.getUTCFullYear();
+  const offsetNow = getOffsetMinutes(timeZone, date);
+  const standardOffset = getStandardOffset(timeZone, year);
+  return offsetNow !== standardOffset;
+}
+
 function longStr(longitude) {
   const degrees = Math.trunc(longitude);
   const decimalDegrees = Math.abs(longitude - degrees);
@@ -181,4 +204,32 @@ function localTime(utcSeconds, timezoneShiftSeconds) {
   // returns JS Date for the location local time (api gives timezone shift in seconds)
   const ts = (utcSeconds + timezoneShiftSeconds) * 1000;
   return new Date(ts);
+}
+
+function directionStr(deg) {
+  // 16-sector compass
+  const sectors = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const idx = Math.floor(((deg + 11.25) % 360) / 22.5);
+  return sectors[idx];
+}
+
+function d2r(deg) {
+  return deg * Math.PI / 180;
+}
+
+function r2d(rad) {
+  return rad * 180 / Math.PI;
+}
+
+function greatCircleDirection(lat1, lon1) { // Davening direction
+  // Returns the compass direction from (lat1, lon1) to the mikdash location
+  const lat2 = d2r(MIKDASH_LAT);
+  const lon2 = d2r(MIKDASH_LON);
+  lat1 = d2r(lat1);
+  lon1 = d2r(lon1);
+  const dLon = lon2 - lon1;
+  const y = Math.sin(dLon);
+  const x = Math.cos(lat1)*Math.tan(lat2) - Math.sin(lat1)*Math.cos(dLon);
+  const brng = r2d(Math.atan2(y, x));
+  return `${directionStr(brng)} (${brng.toFixed(0)}°)`;
 }
